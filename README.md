@@ -1,4 +1,8 @@
-![Uniloop Banner](https://github.com/user-attachments/assets/715e9cbb-3479-4b06-b3fe-a8e42178d789)
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/715e9cbb-3479-4b06-b3fe-a8e42178d789" 
+       alt="Uniloop Banner" 
+       style="width:100%; object-fit:cover; object-position:top; height:320px; border-radius:10px;">
+</p>
 
 # Uniloop — Your Campus, Connected
 
