@@ -1,4 +1,4 @@
-![Uniloop Banner](https://github.com/user-attachments/assets/715e9cbb-3479-4b06-b3fe-a8e42178d789)
+![Uniloop Banner](https://github.com/user-attachments/assets/355e2b86-9470-4eea-93f5-f9e6ce103431)
 
 # Uniloop — Your Campus, Connected
 
@@ -113,7 +113,6 @@ Uniloop empowers students to connect meaningfully, collaborate intelligently, an
 ## Tagline
 
 **Don’t scroll your college life away. Build it with Uniloop.**
-
 
 # Uniloop — Your Campus, Connected
 
