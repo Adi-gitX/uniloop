@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -6,12 +6,13 @@ import {
   ScrollView,
   TouchableOpacity,
   Modal,
-  Alert
-} from 'react-native';
-import useTodayStore from '../stores/useTodayStore';
+  Alert,
+} from "react-native";
+import useTodayStore from "../stores/useTodayStore";
 
 const TodayDashboardScreen = () => {
-  const [selectedMeal, setSelectedMeal] = useState('breakfast');
+  const [selectedMeal, setSelectedMeal] = useState("breakfast");
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [showEventModal, setShowEventModal] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
 
@@ -20,20 +21,35 @@ const TodayDashboardScreen = () => {
     todaysEvents,
     yearCountdown,
     rateMenuItem,
-    rsvpEvent
+    rsvpEvent,
+    fetchMessMenu,
+    loadingMessMenu,
+    messMenuError,
+    messMenuTimings,
   } = useTodayStore();
+
+  // NOTE: Hard-coded token per user request. This is insecure for production —
+  // keep only for local testing or replace with secure storage / auth store.
+  const DEFAULT_MESS_TOKEN =
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6OTExLCJyb2xlIjoiU1RVREVOVCIsIlJlZiI6IjIzMDE0NSIsImlhdCI6MTc2MTQwOTkxMywiZXhwIjoxNzYxNDEzNTEzfQ.BK63G7WXNJuJ1F-ozTBgSLcBrjQey0D2BAVnpfwcidQ";
 
   const handleRateItem = (mealType, itemIndex) => {
     Alert.alert(
-      'Rate Menu Item',
+      "Rate Menu Item",
       `Rate ${messMenu[mealType][itemIndex].name}`,
       [
-        { text: '⭐', onPress: () => rateMenuItem(mealType, itemIndex, 1) },
-        { text: '⭐⭐', onPress: () => rateMenuItem(mealType, itemIndex, 2) },
-        { text: '⭐⭐⭐', onPress: () => rateMenuItem(mealType, itemIndex, 3) },
-        { text: '⭐⭐⭐⭐', onPress: () => rateMenuItem(mealType, itemIndex, 4) },
-        { text: '⭐⭐⭐⭐⭐', onPress: () => rateMenuItem(mealType, itemIndex, 5) },
-        { text: 'Cancel', style: 'cancel' }
+        { text: "⭐", onPress: () => rateMenuItem(mealType, itemIndex, 1) },
+        { text: "⭐⭐", onPress: () => rateMenuItem(mealType, itemIndex, 2) },
+        { text: "⭐⭐⭐", onPress: () => rateMenuItem(mealType, itemIndex, 3) },
+        {
+          text: "⭐⭐⭐⭐",
+          onPress: () => rateMenuItem(mealType, itemIndex, 4),
+        },
+        {
+          text: "⭐⭐⭐⭐⭐",
+          onPress: () => rateMenuItem(mealType, itemIndex, 5),
+        },
+        { text: "Cancel", style: "cancel" },
       ]
     );
   };
@@ -46,25 +62,64 @@ const TodayDashboardScreen = () => {
   const handleRSVP = (eventId) => {
     rsvpEvent(eventId);
     setShowEventModal(false);
-    Alert.alert('RSVP Confirmed', 'You have successfully RSVPed for this event!');
+    Alert.alert(
+      "RSVP Confirmed",
+      "You have successfully RSVPed for this event!"
+    );
   };
 
   const getMealEmoji = (meal) => {
     switch (meal) {
-      case 'breakfast': return '🌅';
-      case 'lunch': return '☀️';
-      case 'dinner': return '🌙';
-      default: return '🍽️';
+      case "breakfast":
+        return "🌅";
+      case "lunch":
+        return "☀️";
+      case "snacks":
+        return "🍟";
+      case "dinner":
+        return "🌙";
+      default:
+        return "🍽️";
     }
   };
 
   const getCategoryEmoji = (category) => {
     switch (category) {
-      case 'Academic': return '📚';
-      case 'Study': return '✏️';
-      case 'Arts': return '🎨';
-      case 'Social': return '👥';
-      default: return '📅';
+      case "Academic":
+        return "📚";
+      case "Study":
+        return "✏️";
+      case "Arts":
+        return "🎨";
+      case "Social":
+        return "👥";
+      default:
+        return "📅";
+    }
+  };
+
+  const formatDateYMD = (d) => {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const changeDate = (days) =>
+    setSelectedDate((prev) => {
+      const next = new Date(prev);
+      next.setDate(next.getDate() + days);
+      return next;
+    });
+
+  const handleLoadMenu = async () => {
+    const dateStr = formatDateYMD(selectedDate);
+    // using hard-coded token for the request
+    const result = await fetchMessMenu(dateStr, DEFAULT_MESS_TOKEN);
+    if (!result.success) {
+      Alert.alert("Failed to load menu", result.error || "Unknown error");
+    } else {
+      Alert.alert("Menu loaded", `Menu for ${dateStr} updated`);
     }
   };
 
@@ -72,12 +127,44 @@ const TodayDashboardScreen = () => {
     <ScrollView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.title}>Today</Text>
-        <Text style={styles.date}>{new Date().toLocaleDateString('en-US', {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric'
-        })}</Text>
+        <Text style={styles.date}>
+          {new Date().toLocaleDateString("en-US", {
+            weekday: "long",
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          })}
+        </Text>
+        <View
+          style={{ marginTop: 8, flexDirection: "row", alignItems: "center" }}
+        >
+          <TouchableOpacity
+            onPress={() => changeDate(-1)}
+            style={[styles.mealButton, { marginRight: 8 }]}
+          >
+            <Text style={styles.mealButtonText}>◀</Text>
+          </TouchableOpacity>
+          <Text style={[styles.date, { marginHorizontal: 8, fontSize: 14 }]}>
+            {formatDateYMD(selectedDate)}
+          </Text>
+          <TouchableOpacity
+            onPress={() => changeDate(1)}
+            style={[styles.mealButton, { marginLeft: 8 }]}
+          >
+            <Text style={styles.mealButtonText}>▶</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleLoadMenu}
+            style={[
+              styles.mealButton,
+              { marginLeft: 12, backgroundColor: "#10b981" },
+            ]}
+          >
+            <Text style={[styles.mealButtonText, { color: "#fff" }]}>
+              {loadingMessMenu ? "Loading..." : "Load Menu"}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Mess Menu Section */}
@@ -85,28 +172,38 @@ const TodayDashboardScreen = () => {
         <View style={styles.cardHeader}>
           <Text style={styles.cardTitle}>🍽️ Mess Menu</Text>
           <View style={styles.mealSelector}>
-            {['breakfast', 'lunch', 'dinner'].map((meal) => (
+            {["breakfast", "lunch", "snacks", "dinner"].map((meal) => (
               <TouchableOpacity
                 key={meal}
                 style={[
                   styles.mealButton,
-                  selectedMeal === meal && styles.mealButtonActive
+                  selectedMeal === meal && styles.mealButtonActive,
                 ]}
                 onPress={() => setSelectedMeal(meal)}
               >
-                <Text style={[
-                  styles.mealButtonText,
-                  selectedMeal === meal && styles.mealButtonTextActive
-                ]}>
-                  {getMealEmoji(meal)} {meal.charAt(0).toUpperCase() + meal.slice(1)}
+                <Text
+                  style={[
+                    styles.mealButtonText,
+                    selectedMeal === meal && styles.mealButtonTextActive,
+                  ]}
+                >
+                  {getMealEmoji(meal)}{" "}
+                  {meal.charAt(0).toUpperCase() + meal.slice(1)}
                 </Text>
               </TouchableOpacity>
             ))}
           </View>
         </View>
 
+        {/* show timing if available */}
+        {messMenuTimings && messMenuTimings[selectedMeal] && (
+          <Text style={{ color: "#9ca3af", fontSize: 12, marginBottom: 8 }}>
+            {messMenuTimings[selectedMeal]}
+          </Text>
+        )}
+
         <View style={styles.menuItems}>
-          {messMenu[selectedMeal].map((item, index) => (
+          {(messMenu && (messMenu[selectedMeal] || [])).map((item, index) => (
             <TouchableOpacity
               key={index}
               style={styles.menuItem}
@@ -116,13 +213,21 @@ const TodayDashboardScreen = () => {
                 <Text style={styles.menuItemName}>{item.name}</Text>
                 <View style={styles.menuItemRating}>
                   <Text style={styles.ratingText}>
-                    {'⭐'.repeat(Math.round(item.rating))} {item.rating.toFixed(1)}
+                    {"⭐".repeat(Math.round(item.rating || 0))}{" "}
+                    {(item.rating || 0).toFixed(1)}
                   </Text>
-                  <Text style={styles.reviewsText}>({item.reviews} reviews)</Text>
+                  <Text style={styles.reviewsText}>
+                    ({item.reviews} reviews)
+                  </Text>
                 </View>
               </View>
             </TouchableOpacity>
           ))}
+          {messMenuError && (
+            <Text style={{ color: "#ff6b6b", marginTop: 8 }}>
+              Error loading menu: {messMenuError}
+            </Text>
+          )}
         </View>
       </View>
 
@@ -136,7 +241,9 @@ const TodayDashboardScreen = () => {
             onPress={() => handleEventPress(event)}
           >
             <View style={styles.eventContent}>
-              <Text style={styles.eventTitle}>{getCategoryEmoji(event.category)} {event.title}</Text>
+              <Text style={styles.eventTitle}>
+                {getCategoryEmoji(event.category)} {event.title}
+              </Text>
               <Text style={styles.eventTime}>🕐 {event.time}</Text>
               <Text style={styles.eventLocation}>📍 {event.location}</Text>
               <Text style={styles.eventDescription}>{event.description}</Text>
@@ -155,7 +262,9 @@ const TodayDashboardScreen = () => {
       <View style={styles.card}>
         <Text style={styles.cardTitle}>🎯 Year Countdown</Text>
         <View style={styles.countdownContent}>
-          <Text style={styles.countdownDays}>{yearCountdown.daysLeft} days left</Text>
+          <Text style={styles.countdownDays}>
+            {yearCountdown.daysLeft} days left
+          </Text>
           <Text style={styles.countdownMessage}>{yearCountdown.message}</Text>
           <Text style={styles.countdownAction}>{yearCountdown.actionText}</Text>
           <View style={styles.resourcesContainer}>
@@ -181,10 +290,15 @@ const TodayDashboardScreen = () => {
               <>
                 <Text style={styles.modalTitle}>{selectedEvent.title}</Text>
                 <Text style={styles.modalTime}>🕐 {selectedEvent.time}</Text>
-                <Text style={styles.modalLocation}>📍 {selectedEvent.location}</Text>
-                <Text style={styles.modalDescription}>{selectedEvent.description}</Text>
+                <Text style={styles.modalLocation}>
+                  📍 {selectedEvent.location}
+                </Text>
+                <Text style={styles.modalDescription}>
+                  {selectedEvent.description}
+                </Text>
                 <Text style={styles.modalAttendees}>
-                  👥 {selectedEvent.attendees}/{selectedEvent.maxAttendees} attending
+                  👥 {selectedEvent.attendees}/{selectedEvent.maxAttendees}{" "}
+                  attending
                 </Text>
 
                 <View style={styles.modalButtons}>
@@ -213,7 +327,7 @@ const TodayDashboardScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#000',
+    backgroundColor: "#000",
     padding: 16,
   },
   header: {
@@ -221,84 +335,84 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 28,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontWeight: "bold",
+    color: "#fff",
     marginBottom: 4,
   },
   date: {
     fontSize: 16,
-    color: '#888',
+    color: "#888",
   },
   card: {
-    backgroundColor: '#111',
+    backgroundColor: "#111",
     borderRadius: 12,
     padding: 16,
     marginBottom: 16,
     borderWidth: 1,
-    borderColor: '#222',
+    borderColor: "#222",
   },
   cardHeader: {
     marginBottom: 12,
   },
   cardTitle: {
     fontSize: 18,
-    fontWeight: '600',
-    color: '#fff',
+    fontWeight: "600",
+    color: "#fff",
     marginBottom: 12,
   },
   mealSelector: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    flexDirection: "row",
+    justifyContent: "space-around",
   },
   mealButton: {
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
-    backgroundColor: '#333',
+    backgroundColor: "#333",
   },
   mealButtonActive: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: "#3b82f6",
   },
   mealButtonText: {
-    color: '#888',
+    color: "#888",
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   mealButtonTextActive: {
-    color: '#fff',
+    color: "#fff",
   },
   menuItems: {
     marginTop: 8,
   },
   menuItem: {
-    backgroundColor: '#222',
+    backgroundColor: "#222",
     borderRadius: 8,
     padding: 12,
     marginBottom: 8,
   },
   menuItemContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   menuItemName: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   menuItemRating: {
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
   },
   ratingText: {
-    color: '#ffd700',
+    color: "#ffd700",
     fontSize: 12,
   },
   reviewsText: {
-    color: '#888',
+    color: "#888",
     fontSize: 10,
   },
   eventItem: {
-    backgroundColor: '#222',
+    backgroundColor: "#222",
     borderRadius: 8,
     padding: 12,
     marginBottom: 8,
@@ -307,137 +421,137 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   eventTitle: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 4,
   },
   eventTime: {
-    color: '#3b82f6',
+    color: "#3b82f6",
     fontSize: 12,
     marginBottom: 2,
   },
   eventLocation: {
-    color: '#888',
+    color: "#888",
     fontSize: 12,
     marginBottom: 2,
   },
   eventDescription: {
-    color: '#ccc',
+    color: "#ccc",
     fontSize: 12,
     marginBottom: 8,
   },
   eventFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   attendeesText: {
-    color: '#059669',
+    color: "#059669",
     fontSize: 12,
   },
   rsvpText: {
-    color: '#3b82f6',
+    color: "#3b82f6",
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   countdownContent: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   countdownDays: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#ff6b6b',
+    fontWeight: "bold",
+    color: "#ff6b6b",
     marginBottom: 8,
   },
   countdownMessage: {
     fontSize: 16,
-    color: '#fff',
-    textAlign: 'center',
+    color: "#fff",
+    textAlign: "center",
     marginBottom: 4,
   },
   countdownAction: {
     fontSize: 14,
-    color: '#888',
-    textAlign: 'center',
+    color: "#888",
+    textAlign: "center",
     marginBottom: 16,
   },
   resourcesContainer: {
-    width: '100%',
+    width: "100%",
   },
   resourceButton: {
-    backgroundColor: '#333',
+    backgroundColor: "#333",
     padding: 8,
     borderRadius: 6,
     marginBottom: 6,
   },
   resourceText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 12,
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.8)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   modalContent: {
-    backgroundColor: '#111',
+    backgroundColor: "#111",
     borderRadius: 12,
     padding: 20,
     margin: 20,
-    width: '90%',
+    width: "90%",
     borderWidth: 1,
-    borderColor: '#222',
+    borderColor: "#222",
   },
   modalTitle: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontWeight: "bold",
+    color: "#fff",
     marginBottom: 12,
-    textAlign: 'center',
+    textAlign: "center",
   },
   modalTime: {
     fontSize: 16,
-    color: '#3b82f6',
+    color: "#3b82f6",
     marginBottom: 8,
-    textAlign: 'center',
+    textAlign: "center",
   },
   modalLocation: {
     fontSize: 14,
-    color: '#888',
+    color: "#888",
     marginBottom: 8,
-    textAlign: 'center',
+    textAlign: "center",
   },
   modalDescription: {
     fontSize: 14,
-    color: '#ccc',
+    color: "#ccc",
     marginBottom: 12,
-    textAlign: 'center',
+    textAlign: "center",
   },
   modalAttendees: {
     fontSize: 14,
-    color: '#059669',
+    color: "#059669",
     marginBottom: 20,
-    textAlign: 'center',
+    textAlign: "center",
   },
   modalButtons: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    flexDirection: "row",
+    justifyContent: "space-around",
   },
   modalButton: {
-    backgroundColor: '#333',
+    backgroundColor: "#333",
     paddingHorizontal: 20,
     paddingVertical: 10,
     borderRadius: 8,
   },
   rsvpButton: {
-    backgroundColor: '#3b82f6',
+    backgroundColor: "#3b82f6",
   },
   modalButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });
 
